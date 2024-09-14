@@ -1,0 +1,85 @@
+import random
+import numpy as np
+from hashlib import sha256
+
+# Step 1: Alice generates random bits and bases
+def generate_random_bits(length):
+    return np.random.randint(2, size=length)
+
+def generate_random_bases(length):
+    return np.random.choice(['+', 'X'], size=length)
+
+# Step 2: Bob measures Alice's qubits in random bases
+def measure_bits(bits, alice_bases, bob_bases):
+    measured_bits = []
+    for bit, alice_base, bob_base in zip(bits, alice_bases, bob_bases):
+        if alice_base == bob_base:
+            measured_bits.append(bit)  # Same basis, correct measurement
+        else:
+            measured_bits.append(np.random.randint(2))  # Random result if bases differ
+    return measured_bits
+
+# Step 3: Public sharing of bases and key sifting
+def sift_keys(alice_bits, bob_bits, alice_bases, bob_bases):
+    sifted_bits = [a for a, b, ab, bb in zip(alice_bits, bob_bits, alice_bases, bob_bases) if ab == bb]
+    return sifted_bits
+
+# Step 4: Error correction and eavesdropping detection
+def error_correction(alice_key, bob_key, threshold=0.15):
+    error_indices = [i for i in range(len(alice_key)) if alice_key[i] != bob_key[i]]
+    error_rate = len(error_indices) / len(alice_key)
+    print(f"Error rate before correction: {error_rate:.4f}")
+    
+    # Eavesdropping detection based on error rate
+    if error_rate > threshold:
+        print("Warning: Eavesdropping detected! Error rate exceeds threshold.")
+    else:
+        print("No eavesdropping detected. Error rate is within safe limits.")
+    
+    # Apply simple error correction (discard differing bits)
+    corrected_key = [bit for i, bit in enumerate(bob_key) if i not in error_indices]
+    return corrected_key
+
+# Step 5: Privacy amplification using hashing (Simple SHA-256)
+def privacy_amplification(secret_key):
+    hashed_key = sha256(''.join(map(str, secret_key)).encode()).hexdigest()
+    return hashed_key
+
+# QKD Protocol Simulation
+def bb84_advanced_protocol(bit_length=128, eavesdrop=False):
+    alice_bits = generate_random_bits(bit_length)
+    alice_bases = generate_random_bases(bit_length)
+
+    bob_bases = generate_random_bases(bit_length)
+    
+    # If eavesdropping is simulated, Eve will intercept and measure with random bases
+    if eavesdrop:
+        eve_bases = generate_random_bases(bit_length)
+        eve_measured_bits = measure_bits(alice_bits, alice_bases, eve_bases)
+        bob_measured_bits = measure_bits(eve_measured_bits, eve_bases, bob_bases)
+    else:
+        bob_measured_bits = measure_bits(alice_bits, alice_bases, bob_bases)
+
+    # Public basis comparison and key sifting
+    alice_sifted_key = sift_keys(alice_bits, bob_measured_bits, alice_bases, bob_bases)
+    bob_sifted_key = sift_keys(bob_measured_bits, bob_measured_bits, alice_bases, bob_bases)
+
+    # Error correction and eavesdropping detection
+    corrected_bob_key = error_correction(alice_sifted_key, bob_sifted_key)
+
+    # Privacy amplification
+    final_alice_key = privacy_amplification(alice_sifted_key)
+    final_bob_key = privacy_amplification(corrected_bob_key)
+
+    return final_alice_key, final_bob_key
+
+# Example usage
+print("### Without Eavesdropping ###")
+alice_final_key, bob_final_key = bb84_advanced_protocol()
+print(f"Alice's Final Key: {alice_final_key}")
+print(f"Bob's Final Key:   {bob_final_key}")
+
+print("\n### With Eavesdropping ###")
+alice_final_key, bob_final_key = bb84_advanced_protocol(eavesdrop=True)
+print(f"Alice's Final Key: {alice_final_key}")
+print(f"Bob's Final Key:   {bob_final_key}")
