@@ -1,0 +1,21 @@
+int ledPin = 13;  // Pin for the LED
+
+void setup() {
+  pinMode(ledPin, OUTPUT);
+  Serial.begin(9600);  // Start serial communication
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String state = Serial.readStringUntil('\n');  // Read the incoming string from Python
+    state.trim();  // Trim the input
+    
+    if (state == "ON") {
+      digitalWrite(ledPin, HIGH);  // Turn the LED ON
+      Serial.println("LED is ON");
+    } else if (state == "OFF") {
+      digitalWrite(ledPin, LOW);  // Turn the LED OFF
+      Serial.println("LED is OFF");
+    }
+  }
+}
